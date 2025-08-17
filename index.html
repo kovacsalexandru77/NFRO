@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Filme Online – Sidebar + Player</title>
+
+<!-- Bootstrap ikonok -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+
+<style>
+body { margin:0; background:black; color:white; font-family:Arial; }
+
+header { 
+  background: rgba(0,0,0,0.85); 
+  padding:10px 20px; 
+  display:flex;
+  justify-content:flex-start;
+  align-items:center;
+  gap: 20px;
+  position:sticky; 
+  top:0; 
+  z-index:1000;
+  margin-left: 60px;
+}
+h1 { margin:0; color:cyan; font-size:22px; }
+#categorySelect { 
+  padding:6px 10px; font-size:15px; 
+  background:rgba(0,0,0,0.6); color:white; 
+  border:2px solid cyan; border-radius:6px; 
+}
+
+#movies { 
+  display:grid; grid-template-columns:repeat(5, 1fr);
+  gap:15px; padding:15px; margin-left: 60px;
+}
+.movie { 
+  background:rgba(0,0,0,0.6); border:2px solid deepskyblue; 
+  border-radius:10px; overflow:hidden; cursor:pointer; transition:0.3s; 
+}
+.movie:hover { transform:scale(1.05); box-shadow:0 0 15px cyan; }
+.movie img { width:100%; height:240px; object-fit:cover; display:block; }
+.movie-title { text-align:center; padding:8px; font-size:14px; color:cyan; }
+
+#playerModal { 
+  position:fixed; top:0; left:0; width:100%; height:100%; 
+  background:rgba(0,0,0,0.95); display:none; 
+  align-items:center; justify-content:center; flex-direction:column; z-index:9999; 
+}
+#playerModal.show { display:flex; }
+#playerIframe { width:100%; height:100%; border:none; background:black; }
+
+#closeBtn { 
+  position:absolute; bottom:20px; right:30px; 
+  font-size:20px; color:white; border-radius:50%; 
+  padding:5px 10px; cursor:pointer; transition: 0.3s;
+}
+#closeBtn:hover {
+  background:red; box-shadow:0 0 15px #ff4040; transform: scale(1.1);
+}
+
+#loadMoreBtn { text-align:center; padding:20px; margin-left: 60px; }
+#loadMoreBtn button { 
+  padding:10px 20px; font-size:16px; 
+  background:cyan; color:black; border:none; 
+  border-radius:8px; cursor:pointer; box-shadow:0 0 10px cyan; 
+}
+#loadMoreBtn button:hover { background:#00ffff; box-shadow:0 0 20px cyan; }
+
+.sidebar {
+  position: fixed; top: 0; left: 0;
+  height: 100%; width: 60px;
+  background-color: transparent;
+  display: flex; flex-direction: column; align-items: center;
+  padding-top: 8px; z-index: 1000;
+}
+.sidebar a {
+  color: #00f7ff; font-size: 24px; margin: 8px 0;
+  transition: transform 0.3s, color 0.3s, text-shadow 0.3s;
+  text-decoration:none;
+}
+.sidebar a:hover {
+  color: #ff00ff; transform: scale(1.3); text-shadow: 0 0 10px #ff00ff;
+}
+
+.clock {
+  position: fixed; top: 4px; right: 17px;
+  font-size: 16px; color: cyan !important;
+  font-weight: bold; z-index: 1100; text-shadow: 0 0 8px cyan;
+}
+
+#preloader {
+  display: none; position: fixed; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  color: cyan; font-weight: bold; font-size: 18px;
+  z-index: 2000; background: rgba(0, 0, 0, 0.8);
+  padding: 20px 40px; border-radius: 12px; text-align: center;
+}
+.animation-preloader .spinner {
+  width: 40px; height: 40px; margin: 0 auto 10px;
+  border: 4px solid cyan; border-top: 4px solid transparent;
+  border-radius: 50%; animation: spin 1s linear infinite;
+}
+@keyframes spin { 0% {transform: rotate(0deg);} 100% {transform: rotate(360deg);} }
+.sidebar a i {
+  font-size: 28px;
+  animation: neonCycle 3s linear infinite;
+}
+
+@keyframes neonCycle {
+  0%   { color: cyan;    text-shadow: 0 0 5px cyan, 0 0 10px cyan; }
+  25%  { color: lime;    text-shadow: 0 0 5px lime, 0 0 10px lime; }
+  50%  { color: yellow;  text-shadow: 0 0 5px yellow, 0 0 10px yellow; }
+  75%  { color: magenta; text-shadow: 0 0 5px magenta, 0 0 10px magenta; }
+  100% { color: cyan;    text-shadow: 0 0 5px cyan, 0 0 10px cyan; }
+}
+
+/* minden ikonra növekvő delay */
+.sidebar a:nth-child(1) i { animation-delay: 0s; }
+.sidebar a:nth-child(2) i { animation-delay: 0.2s; }
+.sidebar a:nth-child(3) i { animation-delay: 0.4s; }
+.sidebar a:nth-child(4) i { animation-delay: 0.6s; }
+.sidebar a:nth-child(5) i { animation-delay: 0.8s; }
+.sidebar a:nth-child(6) i { animation-delay: 1s; }
+.sidebar a:nth-child(7) i { animation-delay: 1.2s; }
+/* ... és így tovább a többi ikonhoz */
+</style>
+</head>
+
+<body>
+<div id="preloader">
+  <div class="animation-preloader">
+    <div class="spinner"></div>
+    <div class="neon-loading">Se încarcă...</div>
+  </div>
+</div>
+
+<!-- 🔵 SIDEBAR -->
+<div class="sidebar">
+  <a href="#" onclick="changeCategory('https://voxfilmeonline.biz/category/filme-online/')" title="Toate"><i class="bi bi-house-heart-fill"></i></a>
+  <a href="#" onclick="changeCategory('https://voxfilmeonline.biz/category/filme-online/actiune/')" title="Acțiune"><i class="bi bi-lightning-charge"></i></a>
+  <a href="#" onclick="changeCategory('https://voxfilmeonline.biz/category/filme-online/animatie/')" title="Animație"><i class="bi bi-palette"></i></a>
+  <a href="#" onclick="changeCategory('https://voxfilmeonline.biz/category/filme-online/crima/')" title="Crimă"><i class="bi bi-shield-lock"></i></a>
+  <a href="#" onclick="changeCategory('https://voxfilmeonline.biz/category/filme-online/familie/')" title="Familie"><i class="bi bi-people"></i></a>
+  <a href="#" onclick="changeCategory('https://voxfilmeonline.biz/category/filme-online/documentar/')" title="Documentar"><i class="bi bi-journal-text"></i></a>
+  <a href="#" onclick="changeCategory('https://voxfilmeonline.biz/category/filme-online/drama/')" title="Dramă"><i class="bi bi-film"></i></a>
+  <a href="#" onclick="changeCategory('https://voxfilmeonline.biz/category/filme-online/razboi/')" title="Război"><i class="bi bi-crosshair"></i></a>
+  <a href="#" onclick="changeCategory('https://voxfilmeonline.biz/category/filme-online/horror/')" title="Horror"><i class="bi bi-emoji-dizzy"></i></a>
+  <a href="#" onclick="changeCategory('https://voxfilmeonline.biz/category/filme-online/aventura/')" title="Aventură"><i class="bi bi-compass"></i></a>
+  <a href="#" onclick="changeCategory('https://voxfilmeonline.biz/category/filme-online/romantic/')" title="Romantic"><i class="bi bi-heart-fill"></i></a>
+  <a href="#" onclick="changeCategory('https://voxfilmeonline.biz/category/filme-online/sf/')" title="SF"><i class="bi bi-rocket-takeoff"></i></a>
+  <a href="#" onclick="changeCategory('https://voxfilmeonline.biz/category/filme-online/thriller/')" title="Thriller"><i class="bi bi-eye"></i></a>
+  <a href="#" onclick="changeCategory('https://voxfilmeonline.biz/category/filme-online/comedie/')" title="Comedie"><i class="bi bi-emoji-smile"></i></a>
+</div>
+
+<header>
+  <select id="categorySelect" onchange="changeCategory(this.value)">
+    <option value="https://voxfilmeonline.biz/category/filme-online/">TOATE CATEGORIILE</option>
+    <option value="https://voxfilmeonline.biz/category/filme-online/actiune/">ACȚIUNE</option>
+    <option value="https://voxfilmeonline.biz/category/filme-online/animatie/">ANIMAȚIE</option>
+    <option value="https://voxfilmeonline.biz/category/filme-online/crima/">CRIMĂ</option>
+    <option value="https://voxfilmeonline.biz/category/filme-online/familie/">FAMILIE</option>
+    <option value="https://voxfilmeonline.biz/category/filme-online/documentar/">DOCUMENTAR</option>
+    <option value="https://voxfilmeonline.biz/category/filme-online/drama/">DRAMĂ</option>
+    <option value="https://voxfilmeonline.biz/category/filme-online/razboi/">RĂZBOI</option>
+    <option value="https://voxfilmeonline.biz/category/filme-online/horror/">HORROR</option>
+    <option value="https://voxfilmeonline.biz/category/filme-online/aventura/">AVENTURĂ</option>
+    <option value="https://voxfilmeonline.biz/category/filme-online/romantic/">ROMANTIC</option>
+    <option value="https://voxfilmeonline.biz/category/filme-online/sf/">SCI-FI</option>
+    <option value="https://voxfilmeonline.biz/category/filme-online/thriller/">THRILLER</option>
+    <option value="https://voxfilmeonline.biz/category/filme-online/comedie/">COMEDIE</option>
+  </select>
+  <h1>ℕ𝕖𝕥𝕗𝕝𝕚𝕩 ℝ𝕠𝕞𝕒𝕟𝕚𝕒▶</h1>
+  <div class="clock" id="clock">--:--:--</div>
+</header>
+
+<div id="movies"></div>
+<div id="loadMoreBtn"><button onclick="loadMoreMovies()">》Mai multe filme《</button></div>
+
+<div id="playerModal">
+  <iframe id="playerIframe" allowfullscreen allow="autoplay; fullscreen"></iframe>
+  <div id="closeBtn" onclick="closeModal()">✕</div>
+</div>
+
+<script>
+const proxy = "https://api.allorigins.win/get?url=";
+let currentPage = 1;
+let currentCategory = "https://voxfilmeonline.biz/category/filme-online/";
+
+function updateClock() {
+  const now = new Date();
+  document.getElementById("clock").textContent = now.toLocaleTimeString("ro-RO", { hour12: false });
+}
+setInterval(updateClock, 1000); updateClock();
+
+function changeCategory(url) {
+  currentCategory = url;
+  currentPage = 1;
+  document.getElementById("movies").innerHTML = "";
+  document.getElementById("loadMoreBtn").innerHTML = '<button onclick="loadMoreMovies()">》Mai multe filme《</button>';
+
+  // 🔵 Szinkronizáljuk a select mezőt a sidebar választással
+  const select = document.getElementById("categorySelect");
+  if (select) {
+    select.value = url;  // beállítjuk a select értékét a választott kategóriára
+  }
+
+  fetchMovies(currentPage);
+}
+function loadMoreMovies() { currentPage++; fetchMovies(currentPage); }
+
+function fetchMovies(page = 1) {
+  let url = currentCategory;
+  if (page > 1) {
+    if (url.endsWith("/")) url += "page/" + page + "/";
+    else url += "/page/" + page + "/";
+  }
+
+  document.getElementById("preloader").style.display = "flex";
+
+  fetch(proxy + encodeURIComponent(url))
+    .then(res => res.json())
+    .then(data => {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(data.contents, "text/html");
+      const items = doc.querySelectorAll("article.post");
+
+      if (items.length === 0) {
+        document.getElementById("loadMoreBtn").innerHTML = "<p style='color:orange;'>Nu mai sunt filme.</p>";
+        document.getElementById("preloader").style.display = "none";
+        return;
+      }
+
+      items.forEach(item => {
+        const link = item.querySelector("a")?.getAttribute("href");
+        const img = item.querySelector("img")?.getAttribute("src");
+        const title = item.querySelector("h2.hcover-title")?.textContent.trim();
+
+        if (link && img && title) {
+          const div = document.createElement("div");
+          div.className = "movie";
+
+          const imgEl = document.createElement("img");
+          imgEl.src = img;
+          imgEl.alt = title;
+
+          const titleDiv = document.createElement("div");
+          titleDiv.className = "movie-title";
+          titleDiv.innerText = title;
+
+          div.appendChild(imgEl);
+          div.appendChild(titleDiv);
+          document.getElementById("movies").appendChild(div);
+
+          div.onclick = () => loadPlayer(link, title);
+        }
+      });
+
+      document.getElementById("preloader").style.display = "none";
+    })
+    .catch(err => {
+      console.error("Eroare:", err);
+      document.getElementById("preloader").style.display = "none";
+    });
+}
+
+function loadPlayer(link, title) {
+  document.getElementById("preloader").style.display = "flex";
+
+  fetch(proxy + encodeURIComponent(link))
+    .then(res => res.json())
+    .then(data => {
+      const doc = new DOMParser().parseFromString(data.contents, "text/html");
+      const iframe = doc.querySelector(
+        'iframe[src*="luluvid"], iframe[src*="filemoon"], iframe[src*="mxdrop"], iframe[src*="realyplayonli"]'
+      );
+
+      if (iframe) {
+        let src = iframe.getAttribute("src");
+        if (src.startsWith("//")) src = "https:" + src;
+        if (!src.includes("autoplay=1")) src += (src.includes("?") ? "&" : "?") + "autoplay=1";
+
+        const player = document.getElementById("playerIframe");
+        player.src = src;
+        player.setAttribute("allowfullscreen", "true");
+        player.style.width = "100%"; player.style.height = "100%";
+
+        document.getElementById("playerModal").style.display = "flex";
+      } else {
+        alert("Nu am găsit un player suportat pentru acest film.");
+      }
+
+      document.getElementById("preloader").style.display = "none";
+    })
+    .catch(err => {
+      console.error("Eroare:", err);
+      document.getElementById("preloader").style.display = "none";
+    });
+}
+
+function closeModal() {
+  document.getElementById("playerModal").style.display = "none";
+  document.getElementById("playerIframe").src = "";
+}
+
+fetchMovies(currentPage);
+</script>
+</body>
+</html>
