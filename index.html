@@ -88,6 +88,22 @@ h1 { margin:0; color:cyan; font-size:22px; }
   font-size: 16px; color: cyan !important;
   font-weight: bold; z-index: 1100; text-shadow: 0 0 8px cyan;
 }
+#closeBtn {
+      position:absolute;
+      bottom:20px;
+      right:30px;
+      font-size:20px;
+      color:white;
+      border-radius:50%;
+      padding:5px 10px;
+      cursor:pointer;
+      transition: 0.3s;
+    }
+    #closeBtn:hover {
+      background:red;
+      box-shadow:0 0 15px #ff4040;
+      transform: scale(1.1);
+    }
 
 #preloader {
   display: none; position: fixed; top: 50%; left: 50%;
@@ -134,7 +150,7 @@ h1 { margin:0; color:cyan; font-size:22px; }
     <div class="neon-loading">Se încarcă...</div>
   </div>
 </div>
-
+  <div id="closeBtn" onclick="closeModal()">✕</div>
 <!-- 🔵 SIDEBAR -->
 <div class="sidebar">
   <a href="#" onclick="changeCategory('https://voxfilmeonline.biz/category/filme-online/')" title="Toate"><i class="bi bi-house-heart-fill"></i></a>
@@ -270,27 +286,45 @@ function fetchMovies(page = 1) {
 
 // 🔵 KÜLSŐ KÉPEK BETÖLTÉSE
 function loadExternalImages() {
-  const imageUrl = "https://example.com"; // ide jön a külső oldal URL-je
+  const dvdPage = "https://voxfilmeonline.biz/category/dvd-filme/";
   let container = document.getElementById("movies"); // ugyanabba a containerbe tesszük
 
-  fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(imageUrl))
-    .then(response => response.text())
-    .then(htmlString => {
+  fetch("https://api.allorigins.win/get?url=" + encodeURIComponent(dvdPage))
+    .then(res => res.json())
+    .then(data => {
       const parser = new DOMParser();
-      const doc = parser.parseFromString(htmlString, "text/html");
-      const images = doc.querySelectorAll("img");
+      const doc = parser.parseFromString(data.contents, "text/html");
+      const items = doc.querySelectorAll("article.post"); // feltételezve, hogy a DVD filmek is "article.post"
 
-      images.forEach(img => {
-        let imgSrc = img.src;
-        if (imgSrc.startsWith("http://")) imgSrc = imgSrc.replace("http://", "https://");
+      items.forEach(item => {
+        const link = item.querySelector("a")?.href;
+        let img = item.querySelector("img")?.getAttribute("src");
+        const title = item.querySelector("h2.hcover-title")?.textContent.trim();
 
-        const newImg = document.createElement("img");
-        newImg.src = imgSrc;
-        newImg.alt = img.alt || "Imported Image";
-        container.appendChild(newImg);
+        if (link && img && title) {
+          if (img.startsWith("//")) img = "https:" + img; // ha relatív URL
+          if (img.startsWith("/")) img = "https://voxfilmeonline.biz" + img;
+
+          const div = document.createElement("div");
+          div.className = "movie";
+
+          const imgEl = document.createElement("img");
+          imgEl.src = img;
+          imgEl.alt = title;
+
+          const titleDiv = document.createElement("div");
+          titleDiv.className = "movie-title";
+          titleDiv.innerText = title;
+
+          div.appendChild(imgEl);
+          div.appendChild(titleDiv);
+          container.appendChild(div);
+
+          div.onclick = () => loadPlayer(link, title);
+        }
       });
     })
-    .catch(err => console.error("Hiba a külső képek betöltésekor:", err));
+    .catch(err => console.error("Hiba a DVD képek betöltésekor:", err));
 }
 
 function loadPlayer(link, title) {
